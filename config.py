@@ -6,8 +6,8 @@ except ImportError:
     pass
 
 # Dashboard Host & Port Config
-DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "127.0.0.1")
-DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", 5050))
+DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "0.0.0.0")
+DASHBOARD_PORT = int(os.getenv("PORT", os.getenv("DASHBOARD_PORT", 5050)))
 
 # System Trading Mode ("PAPER" or "LIVE" or "BACKTEST")
 TRADING_MODE = os.getenv("TRADING_MODE", "LIVE")
