@@ -85,7 +85,7 @@
             </section>
 
             <!-- 🤖 DEDICATED SEPARATE SECTION: WHAT MY AI MODEL DID & LIVE RESULTS -->
-            <section class="card mt-20" id="aiAuditSection" style="border:1px solid rgba(168,85,247,0.4);background:#0b1120;">
+            <section class="card mt-20 tab-view-section" id="aiAuditSection" data-view="ai-audit" style="border:1px solid rgba(168,85,247,0.4);background:#0b1120;">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <h3 style="color:#c084fc;font-size:18px;">🤖 What My AI Model Did & Live Execution Results</h3>
@@ -103,7 +103,7 @@
             </section>
 
             <!-- 💰 DEDICATED SEPARATE SECTION: AI STOCK PROFIT & LOSS ANALYTICS -->
-            <section class="card mt-20" id="stockPnlSection" style="border:1px solid rgba(16,185,129,0.3);background:#0b1120;">
+            <section class="card mt-20 tab-view-section" id="stockPnlSection" data-view="pnl" style="border:1px solid rgba(16,185,129,0.3);background:#0b1120;">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <h3 style="color:#10b981;font-size:18px;">💰 AI Stock Profit & Loss Analytics Engine</h3>
@@ -137,7 +137,7 @@
             </section>
 
             <!-- Live Quant Metrics Bar -->
-            <section class="kpi-grid mt-20" style="grid-template-columns: repeat(4, 1fr);">
+            <section class="kpi-grid mt-20 tab-view-section" id="learningSection" data-view="learning" style="grid-template-columns: repeat(4, 1fr);">
                 <div class="kpi-card" style="background:#0f172a;border-color:rgba(59,130,246,0.3);">
                     <span class="kpi-label">📈 Detected Market Regime</span>
                     <h3 class="kpi-value" id="liveRegimeVal" style="font-size:16px;color:#3b82f6;">🚀 Strong Bull Trend</h3>
@@ -161,7 +161,7 @@
             </section>
 
             <!-- Main Layout Grid -->
-            <section class="grid-2col mt-20">
+            <section class="grid-2col mt-20 tab-view-section" id="chartSection" data-view="dashboard">
                 <!-- TradingView Professional Candlestick Chart -->
                 <div class="card card-chart">
                     <div class="card-header">
@@ -203,9 +203,9 @@
             </section>
 
             <!-- AI Top Signals & Active Positions -->
-            <section class="grid-2col mt-20">
+            <section class="grid-2col mt-20 tab-view-section" id="signalsAndPositionsSection">
                 <!-- AI Top Signals -->
-                <div class="card">
+                <div class="card" id="signalsSection" data-view="signals">
                     <div class="card-header">
                         <h3>🤖 Quant Signals & XAI Decision Audit</h3>
                     </div>
@@ -215,7 +215,7 @@
                 </div>
 
                 <!-- Active Positions Table -->
-                <div class="card">
+                <div class="card" id="positionsSection" data-view="positions">
                     <div class="card-header">
                         <h3>💼 Active SQLite DB Positions</h3>
                     </div>
@@ -240,7 +240,7 @@
             </section>
 
             <!-- Trade Logs & n8n Automation History -->
-            <section class="card mt-20">
+            <section class="card mt-20 tab-view-section" id="n8nSection" data-view="n8n">
                 <div class="card-header">
                     <h3>📜 Agent & n8n Execution Stream</h3>
                 </div>

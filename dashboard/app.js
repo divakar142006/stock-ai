@@ -586,33 +586,67 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Smooth Navigation Tab Click & Scroll Handler
+    // Single Page Application (SPA) Tab Switching & Hash Router
     const sidebarNav = document.getElementById("sidebarNav");
+    
+    function switchTab(tabName) {
+        if (!tabName) tabName = "dashboard";
+        
+        // Update URL hash without jumping page
+        if (history.pushState) {
+            history.pushState(null, null, '#' + tabName);
+        } else {
+            location.hash = '#' + tabName;
+        }
+
+        // Highlight active nav item
+        if (sidebarNav) {
+            const navItems = sidebarNav.querySelectorAll(".nav-item");
+            navItems.forEach(item => {
+                const itemTab = item.getAttribute("data-tab");
+                if (itemTab === tabName) {
+                    item.classList.add("active");
+                } else {
+                    item.classList.remove("active");
+                }
+            });
+        }
+
+        // Focus & scroll to target section
+        let targetEl = null;
+        if (tabName === "dashboard") targetEl = document.getElementById("chartSection");
+        else if (tabName === "ai-audit") targetEl = document.getElementById("aiAuditSection");
+        else if (tabName === "pnl") targetEl = document.getElementById("stockPnlSection");
+        else if (tabName === "positions") targetEl = document.getElementById("positionsSection") || document.getElementById("positionsTable");
+        else if (tabName === "signals") targetEl = document.getElementById("signalsSection") || document.getElementById("aiPicksList");
+        else if (tabName === "n8n") targetEl = document.getElementById("n8nSection") || document.getElementById("tradeLogList");
+        else if (tabName === "learning") targetEl = document.getElementById("learningSection");
+
+        if (targetEl) {
+            targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }
+
     if (sidebarNav) {
         const navItems = sidebarNav.querySelectorAll(".nav-item");
         navItems.forEach(item => {
             item.addEventListener("click", (e) => {
                 e.preventDefault();
-                navItems.forEach(i => i.classList.remove("active"));
-                item.classList.add("active");
-
                 const tab = item.getAttribute("data-tab");
-                let targetEl = null;
-
-                if (tab === "dashboard") targetEl = document.getElementById("tradingviewChart");
-                else if (tab === "ai-audit") targetEl = document.getElementById("aiAuditSection");
-                else if (tab === "pnl") targetEl = document.getElementById("stockPnlSection");
-                else if (tab === "positions") targetEl = document.getElementById("positionsTable");
-                else if (tab === "signals") targetEl = document.getElementById("aiPicksList");
-                else if (tab === "n8n") targetEl = document.getElementById("tradeLogList");
-                else if (tab === "learning") targetEl = document.getElementById("learningWinRate");
-
-                if (targetEl) {
-                    targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
+                switchTab(tab);
             });
         });
     }
+
+    // Handle hash on initial page load
+    const initialHash = location.hash.replace('#', '');
+    if (initialHash) {
+        setTimeout(() => switchTab(initialHash), 300);
+    }
+    window.addEventListener("hashchange", () => {
+        const hash = location.hash.replace('#', '');
+        if (hash) switchTab(hash);
+    });
 
     // Chart Symbol Selector Handler
     if (chartSymbolSelect) {
