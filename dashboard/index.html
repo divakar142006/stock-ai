@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI Quantitative Hedge Fund Command Center</title>
+    <!-- Google Fonts, TradingView Lightweight Charts & Chart.js -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="logo">⚡</span>
+                <div class="brand-text">
+                    <h2>StockAI <span class="badge-mode" id="tradingModeBadge">PAPER</span></h2>
+                    <span class="subtext">Quant Hedge Fund Engine</span>
+                </div>
+            </div>
+            <nav class="nav" id="sidebarNav">
+                <a href="#" class="nav-item active" data-tab="dashboard">📊 TradingView Chart</a>
+                <a href="#" class="nav-item" data-tab="ai-audit">🤖 What AI Model Did & Results</a>
+                <a href="#" class="nav-item" data-tab="pnl">💰 Stock P&L Analytics</a>
+                <a href="#" class="nav-item" data-tab="positions">💼 Positions DB</a>
+                <a href="#" class="nav-item" data-tab="signals">🤖 AI Signals</a>
+                <a href="#" class="nav-item" data-tab="n8n">⚡ n8n Webhooks</a>
+                <a href="#" class="nav-item" data-tab="learning">🧠 Self-Learning</a>
+            </nav>
+            <div class="sidebar-status">
+                <div class="status-indicator">
+                    <span class="dot pulse-green" id="agentDot"></span>
+                    <span id="agentStatusText">Agent Active</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="toggleAgentBtn">Pause Agent</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Universal 1-Second Scrolling Market Ticker Tape -->
+            <div class="ticker-tape-container" style="background:#0b1120;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 14px;margin-bottom:16px;overflow:hidden;white-space:nowrap;">
+                <div id="liveTickerTape" style="display:inline-block;animation:tickerScroll 40s linear infinite;font-size:12px;font-weight:600;">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </div>
+
+            <!-- Header Bar -->
+            <header class="topbar">
+                <div class="page-title">
+                    <h1>Institutional Quant Hedge Fund AI System</h1>
+                    <p class="subtitle">Multi-Model Ensemble • Live AI Execution Audit • Stock P&L Analytics • 1-Second Updates</p>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-primary" id="manualScanBtn">⚡ Run Quant Scan</button>
+                    <button class="btn btn-outline" id="manualOrderBtn">+ Manual Trade</button>
+                </div>
+            </header>
+
+            <!-- Key Metrics Grid (Hedge Fund KPIs) -->
+            <section class="kpi-grid">
+                <div class="kpi-card accent-blue">
+                    <span class="kpi-label">Portfolio Equity</span>
+                    <h2 class="kpi-value" id="portfolioEquity">$100,000.00</h2>
+                    <span class="kpi-meta" id="equityMeta">Buying Power: $200,000.00</span>
+                </div>
+                <div class="kpi-card accent-green">
+                    <span class="kpi-label">Unrealized P&L</span>
+                    <h2 class="kpi-value" id="unrealizedPL">$0.00</h2>
+                    <span class="kpi-meta" id="unrealizedPLPct">+0.00%</span>
+                </div>
+                <div class="kpi-card accent-amber">
+                    <span class="kpi-label">Sharpe / Sortino / Calmar</span>
+                    <h2 class="kpi-value" id="sharpeRatioVal">2.15 / 3.10 / 2.85</h2>
+                    <span class="kpi-meta" id="profitFactorMeta">Alpha: +4.2% • Beta: 0.85</span>
+                </div>
+                <div class="kpi-card accent-purple">
+                    <span class="kpi-label">🧠 AI Win Rate (≥85% Filter)</span>
+                    <h2 class="kpi-value" id="learningWinRate">100 %</h2>
+                    <span class="kpi-meta" id="learningMeta">Reinforcement Q-Agent Active</span>
+                </div>
+            </section>
+
+            <!-- 🤖 DEDICATED SEPARATE SECTION: WHAT MY AI MODEL DID & LIVE RESULTS -->
+            <section class="card mt-20" id="aiAuditSection" style="border:1px solid rgba(168,85,247,0.4);background:#0b1120;">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <h3 style="color:#c084fc;font-size:18px;">🤖 What My AI Model Did & Live Execution Results</h3>
+                        <span class="badge-tag" style="background:rgba(168,85,247,0.15);color:#c084fc;">Live Autonomous Audit Feed</span>
+                    </div>
+                    <div style="font-size:12px;color:#94a3b8;" id="aiModelStatsSummary">
+                        Model Confidence: <strong style="color:#10b981;">94.2%</strong> | Decisions Executed: <strong style="color:#c084fc;">14</strong> | Win Rate: <strong style="color:#10b981;">100%</strong>
+                    </div>
+                </div>
+
+                <!-- AI Execution & Results Live Stream -->
+                <div class="ai-list" id="aiExecutionAuditList" style="margin-top:12px;max-height:350px;overflow-y:auto;">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </section>
+
+            <!-- 💰 DEDICATED SEPARATE SECTION: AI STOCK PROFIT & LOSS ANALYTICS -->
+            <section class="card mt-20" id="stockPnlSection" style="border:1px solid rgba(16,185,129,0.3);background:#0b1120;">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <h3 style="color:#10b981;font-size:18px;">💰 AI Stock Profit & Loss Analytics Engine</h3>
+                        <span class="badge-tag" style="background:rgba(16,185,129,0.15);color:#10b981;">Live Stock Performance</span>
+                    </div>
+                    <div style="font-size:12px;color:#94a3b8;" id="pnlSummaryText">
+                        Total Realized: <strong style="color:#10b981;">+$1,450.00</strong> | Win Rate: <strong style="color:#10b981;">100%</strong>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-top:12px;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Stock Symbol</th>
+                                <th>Strategy Used</th>
+                                <th>Qty</th>
+                                <th>Avg Entry Price</th>
+                                <th>Current Price</th>
+                                <th>Position Value</th>
+                                <th>Unrealized P&L ($)</th>
+                                <th>Return (%)</th>
+                                <th>Outcome Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockPnlTableBody">
+                            <!-- Populated dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Live Quant Metrics Bar -->
+            <section class="kpi-grid mt-20" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="kpi-card" style="background:#0f172a;border-color:rgba(59,130,246,0.3);">
+                    <span class="kpi-label">📈 Detected Market Regime</span>
+                    <h3 class="kpi-value" id="liveRegimeVal" style="font-size:16px;color:#3b82f6;">🚀 Strong Bull Trend</h3>
+                    <span class="kpi-meta" id="liveRsiMeta">ADX > 25 • Alignment</span>
+                </div>
+                <div class="kpi-card" style="background:#0f172a;border-color:rgba(16,185,129,0.3);">
+                    <span class="kpi-label">🕯️ Candlestick Pattern Matrix</span>
+                    <h3 class="kpi-value" id="livePatternVal" style="font-size:16px;color:#10b981;">Bullish Engulfing (82%)</h3>
+                    <span class="kpi-meta" id="liveMacdMeta">Pattern Probability Matrix</span>
+                </div>
+                <div class="kpi-card" style="background:#0f172a;border-color:rgba(168,85,247,0.3);">
+                    <span class="kpi-label">🧠 Quant Model Ensemble</span>
+                    <h3 class="kpi-value" id="liveEnsembleVal" style="font-size:16px;color:#a855f7;">XGB + RF + LSTM + RL</h3>
+                    <span class="kpi-meta" id="liveBbMeta">5 Model Weighted Average</span>
+                </div>
+                <div class="kpi-card" style="background:#0f172a;border-color:rgba(245,158,11,0.3);">
+                    <span class="kpi-label">🔍 XAI Audit Gate</span>
+                    <h3 class="kpi-value" id="liveXaiVal" style="font-size:16px;color:#f59e0b;">≥ 85% Confidence</h3>
+                    <span class="kpi-meta" id="liveVolMeta">Explainable Decision Trail</span>
+                </div>
+            </section>
+
+            <!-- Main Layout Grid -->
+            <section class="grid-2col mt-20">
+                <!-- TradingView Professional Candlestick Chart -->
+                <div class="card card-chart">
+                    <div class="card-header">
+                        <div class="chart-title-group" style="display:flex;align-items:center;gap:12px">
+                            <h3>🕯️ TradingView Live Chart</h3>
+                            <select id="chartSymbolSelect" class="btn btn-outline btn-sm" style="background:#0f172a;color:#fff;border-color:rgba(255,255,255,0.15);">
+                                <option value="AAPL">AAPL — Apple Inc.</option>
+                                <option value="NVDA">NVDA — NVIDIA Corp.</option>
+                                <option value="TSLA">TSLA — Tesla Inc.</option>
+                                <option value="MSFT">MSFT — Microsoft</option>
+                                <option value="AMZN">AMZN — Amazon.com</option>
+                                <option value="GOOGL">GOOGL — Alphabet</option>
+                                <option value="META">META — Meta Platforms</option>
+                                <option value="SPY">SPY — S&P 500 ETF</option>
+                                <option value="QQQ">QQQ — Nasdaq 100 ETF</option>
+                                <option value="COIN">COIN — Coinbase Global</option>
+                            </select>
+                        </div>
+                        <div class="time-filters">
+                            <button class="filter-btn active">Candlesticks</button>
+                            <button class="filter-btn">SMA 50/200</button>
+                            <button class="filter-btn">Volume</button>
+                        </div>
+                    </div>
+                    <!-- TradingView Chart Container -->
+                    <div id="tradingviewChart" style="height: 300px; width: 100%;"></div>
+                </div>
+
+                <!-- Live Breaking Market News & AI Signals -->
+                <div class="card card-ai">
+                    <div class="card-header">
+                        <h3>📰 Live Stock Market News & NLP Sentiment</h3>
+                        <span class="badge-tag" id="scannedCount">70+ Products Live</span>
+                    </div>
+                    <div class="ai-list" id="liveNewsList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Top Signals & Active Positions -->
+            <section class="grid-2col mt-20">
+                <!-- AI Top Signals -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>🤖 Quant Signals & XAI Decision Audit</h3>
+                    </div>
+                    <div class="ai-list" id="aiPicksList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Active Positions Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>💼 Active SQLite DB Positions</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="table" id="positionsTable">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Qty</th>
+                                    <th>Avg Cost</th>
+                                    <th>Live Price</th>
+                                    <th>Market Value</th>
+                                    <th>P&L ($ / %)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positionsTableBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trade Logs & n8n Automation History -->
+            <section class="card mt-20">
+                <div class="card-header">
+                    <h3>📜 Agent & n8n Execution Stream</h3>
+                </div>
+                <div class="log-list" id="tradeLogList">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Manual Trade Modal -->
+    <div class="modal-backdrop" id="tradeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Submit Manual Broker Order</h3>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Ticker Symbol</label>
+                    <input type="text" id="orderSymbol" placeholder="e.g. AAPL, NVDA, SPY, COIN" style="text-transform:uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="orderQty" min="1" value="10">
+                </div>
+                <div class="form-group">
+                    <label>Order Action</label>
+                    <select id="orderSide">
+                        <option value="buy">BUY</option>
+                        <option value="sell">SELL</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelOrderBtn">Cancel</button>
+                <button class="btn btn-primary" id="submitOrderBtn">Execute Order</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
