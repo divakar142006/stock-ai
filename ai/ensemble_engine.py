@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 class QuantitativeEnsembleEngine:
     def __init__(self):
-        self.rf_model = RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42)
-        self.gb_model = GradientBoostingClassifier(n_estimators=100, max_depth=4, random_state=42)
-        self.models_trained_symbols = {}
+        self.symbol_models = {}
         self.training_lock = threading.Lock()
 
     def _compute_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -103,16 +101,40 @@ class QuantitativeEnsembleEngine:
             X = df_train[features]
             y = df_train['target']
             
-            self.gb_model.fit(X, y)
-            self.rf_model.fit(X, y)
+            if len(np.unique(y)) < 2:
+                logger.info(f"Target has single class for {symbol}. Skipping model fit.")
+                return False
+
+            gb_model = GradientBoostingClassifier(n_estimators=100, max_depth=4, random_state=42)
+            rf_model = RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42)
+
+            gb_model.fit(X, y)
+            rf_model.fit(X, y)
             
-            self.models_trained_symbols[symbol] = datetime.now()
+            self.symbol_models[symbol] = {
+                "gb": gb_model,
+                "rf": rf_model,
+                "trained_at": datetime.now()
+            }
             logger.info(f"Models trained successfully for {symbol}")
             return True
             
         except Exception as e:
             logger.error(f"Failed to train models for {symbol}: {str(e)}")
             return False
+
+    def _safe_predict_proba(self, model, X_feat) -> float:
+        try:
+            probs = model.predict_proba(X_feat)[0]
+            classes = getattr(model, "classes_", np.array([0, 1]))
+            if len(classes) == 1:
+                return float(classes[0])
+            class_1_idx = np.where(classes == 1)[0]
+            if len(class_1_idx) > 0:
+                return float(probs[class_1_idx[0]])
+            return float(probs[-1])
+        except Exception:
+            return 0.50
 
     def predict(self, symbol: str, df: pd.DataFrame) -> dict:
         """
@@ -122,14 +144,14 @@ class QuantitativeEnsembleEngine:
             return self._default_ensemble_output(symbol)
 
         with self.training_lock:
-            last_trained = self.models_trained_symbols.get(symbol)
+            model_entry = self.symbol_models.get(symbol)
+            last_trained = model_entry["trained_at"] if model_entry else None
             needs_training = last_trained is None or (datetime.now() - last_trained) > timedelta(hours=24)
             is_trained = True
             
             if needs_training:
                 is_trained = self._train_models(symbol, df)
-            elif last_trained is not None:
-                is_trained = True
+                model_entry = self.symbol_models.get(symbol)
 
         closes = df['Close']
         highs = df['High']
@@ -141,7 +163,7 @@ class QuantitativeEnsembleEngine:
         ret_5d = (float(closes.iloc[-1]) - float(closes.iloc[-6])) / float(closes.iloc[-6]) * 100.0 if len(df) >= 6 else 0.0
         vol_ratio = float(volumes.iloc[-1]) / float(volumes.rolling(20).mean().iloc[-1]) if len(df) >= 20 else 1.0
 
-        if is_trained:
+        if is_trained and model_entry:
             try:
                 df_feat = self._compute_features(df.tail(60))
                 features = [
@@ -153,8 +175,8 @@ class QuantitativeEnsembleEngine:
                 ]
                 latest_features = df_feat[features].fillna(0).tail(1)
                 if not latest_features.empty and len(latest_features) > 0:
-                    gb_prob_up = float(self.gb_model.predict_proba(latest_features)[0][1])
-                    rf_prob_up = float(self.rf_model.predict_proba(latest_features)[0][1])
+                    gb_prob_up = self._safe_predict_proba(model_entry["gb"], latest_features)
+                    rf_prob_up = self._safe_predict_proba(model_entry["rf"], latest_features)
                 else:
                     is_trained = False
             except Exception as e:

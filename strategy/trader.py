@@ -215,12 +215,9 @@ class AutonomousTrader:
         acc = self.broker.get_account()
         positions = self.broker.get_positions()
         
-        quotes = {}
-        for sym in config.WATCHLIST[:12]:
-            try:
-                quotes[sym] = self.market_data.get_live_quote(sym)
-            except Exception:
-                pass
+        # Collect all symbols needed for real-time dashboard display
+        needed_symbols = list(set([p['symbol'] for p in positions] + config.WATCHLIST[:15]))
+        quotes = self.market_data.get_batch_quotes(needed_symbols)
 
         top_picks = self.cached_ai_reports[:10]
         if not top_picks:
@@ -258,5 +255,6 @@ class AutonomousTrader:
             "quotes": quotes,
             "is_active": self.is_active,
             "is_scanning": self.is_scanning,
-            "last_scan_time": self.last_scan_time
+            "last_scan_time": self.last_scan_time,
+            "server_time": time.strftime("%H:%M:%S")
         }

@@ -115,30 +115,11 @@ class MarketDataEngine:
     def get_live_quote(self, symbol: str) -> dict:
         now = time.time()
         
-        # 1-second micro-tick fluctuation for smooth UI motion between 5-second snapshot refreshes
+        # Return clean cached real quote if fetched within the last 2 seconds
         if symbol in self._quote_cache:
             base_quote, timestamp = self._quote_cache[symbol]
-            if now - timestamp < 5:
-                cur_price = self._live_ticks.get(symbol, base_quote['price'])
-                delta = (random.random() - 0.49) * 0.0008 * cur_price
-                new_price = round(max(0.01, cur_price + delta), 2)
-                self._live_ticks[symbol] = new_price
-                
-                prev_close = base_quote['previous_close']
-                change = new_price - prev_close if prev_close else 0.0
-                change_pct = (change / prev_close * 100.0) if prev_close else 0.0
-
-                return {
-                    "symbol": symbol,
-                    "price": new_price,
-                    "previous_close": prev_close,
-                    "change": round(float(change), 2),
-                    "change_pct": round(float(change_pct), 2),
-                    "high": max(new_price, base_quote['high']),
-                    "low": min(new_price, base_quote['low']),
-                    "volume": base_quote['volume'],
-                    "timestamp": now
-                }
+            if now - timestamp < 2.0:
+                return base_quote.copy()
 
         # Try Alpaca Snapshot API first for 1.5s real-world precision
         alpaca_quotes = self.fetch_alpaca_snapshots([symbol])

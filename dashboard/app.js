@@ -427,6 +427,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }).join('');
         }
 
+        // Update Live System Clock
+        const systemClockEl = document.getElementById("systemClock");
+        if (systemClockEl) {
+            systemClockEl.textContent = new Date().toLocaleTimeString();
+        }
+
         // 🕯️ 1-SECOND TRADINGVIEW CANDLESTICK TICK UPDATER
         if (candlestickSeries && lastCandleState && quotes[currentChartSymbol]) {
             const livePrice = quotes[currentChartSymbol].price;
@@ -434,7 +440,9 @@ document.addEventListener("DOMContentLoaded", () => {
             lastCandleState.high = Math.max(lastCandleState.high, livePrice);
             lastCandleState.low = Math.min(lastCandleState.low, livePrice);
             lastCandleState.close = livePrice;
-            lastCandleState.volume += Math.floor(Math.random() * 500) + 100;
+            if (quotes[currentChartSymbol].volume) {
+                lastCandleState.volume = quotes[currentChartSymbol].volume;
+            }
 
             try {
                 candlestickSeries.update({
