@@ -250,13 +250,13 @@ document.addEventListener("DOMContentLoaded", () => {
             totalPositionValue += p.market_value;
         });
 
-        const cash = acc.cash || 75000.0;
-        const liveEquity = cash + totalPositionValue;
-        const startingEquity = 100000.0;
-        const totalPlPct = ((liveEquity - startingEquity) / startingEquity * 100.0);
+        const cash = typeof acc.cash === 'number' ? acc.cash : 0.0;
+        const liveEquity = typeof acc.equity === 'number' ? acc.equity : (cash + totalPositionValue);
+        const buyingPower = typeof acc.buying_power === 'number' ? acc.buying_power : (liveEquity * 2);
+        const totalPlPct = liveEquity > 0 ? ((totalUnrealizedPL / liveEquity) * 100.0) : 0.0;
 
         if (portfolioEquityEl) portfolioEquityEl.textContent = `$${liveEquity.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        if (equityMetaEl) equityMetaEl.textContent = `Buying Power: $${(liveEquity * 2).toLocaleString('en-US', {minimumFractionDigits: 0})}`;
+        if (equityMetaEl) equityMetaEl.textContent = `Buying Power: $${buyingPower.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         if (availableCashEl) availableCashEl.textContent = `$${cash.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         
         if (unrealizedPLEl) {
@@ -268,11 +268,21 @@ document.addEventListener("DOMContentLoaded", () => {
             unrealizedPLPctEl.className = `kpi-meta ${totalPlPct >= 0 ? 'text-green' : 'text-red'}`;
         }
 
-        if (tradingModeBadge) tradingModeBadge.textContent = acc.trading_mode || "PAPER";
+        if (tradingModeBadge) tradingModeBadge.textContent = acc.trading_mode || "LIVE";
 
-        // Sharpe, Sortino & Calmar Ratio KPIs
-        if (sharpeRatioValEl) sharpeRatioValEl.textContent = `${learning.sharpe_ratio || 2.15} / ${learning.sortino_ratio || 3.10} / ${learning.calmar_ratio || 2.85}`;
-        if (profitFactorMetaEl) profitFactorMetaEl.textContent = `Alpha: +${learning.alpha_pct || 4.2}% • Beta: ${learning.beta || 0.85} • Profit Factor: ${learning.profit_factor || 2.50}`;
+        // Sharpe, Sortino & Calmar Ratio KPIs (Honest Metrics)
+        const numTrades = learning.total_learned_trades || 0;
+        if (numTrades >= 10 && learning.sharpe_ratio && learning.sharpe_ratio !== "N/A") {
+            if (sharpeRatioValEl) sharpeRatioValEl.textContent = `${learning.sharpe_ratio} / ${learning.sortino_ratio} / ${learning.calmar_ratio}`;
+            if (profitFactorMetaEl) profitFactorMetaEl.textContent = `Alpha: ${learning.alpha_pct}% • Beta: ${learning.beta} • Profit Factor: ${learning.profit_factor}`;
+            if (learningWinRateEl) learningWinRateEl.textContent = `${learning.win_rate_pct}%`;
+            if (learningMetaEl) learningMetaEl.textContent = `${numTrades} trades learned • Realized: $${learning.total_realized_pnl || '0.00'}`;
+        } else {
+            if (sharpeRatioValEl) sharpeRatioValEl.textContent = "N/A / N/A / N/A";
+            if (profitFactorMetaEl) profitFactorMetaEl.textContent = "Awaiting Completed Trades (10+ Trades Required)";
+            if (learningWinRateEl) learningWinRateEl.textContent = numTrades > 0 ? `${learning.win_rate_pct}%` : "N/A";
+            if (learningMetaEl) learningMetaEl.textContent = `${numTrades} Completed Trades`;
+        }
 
         // Market Regime & Candlestick Pattern Matrix display
         if (aiPicks.length > 0) {
@@ -283,48 +293,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 🤖 POPULATE DEDICATED "WHAT MY AI MODEL DID & LIVE RESULTS" FEED
         if (aiExecutionAuditList) {
-            const auditEvents = [
-                {
+            const auditEvents = [];
+            if (aiPicks.length > 0) {
+                const top = aiPicks[0];
+                auditEvents.push({
                     time: "Just Now",
                     badge: "QUANT SCAN",
                     badgeBg: "rgba(168,85,247,0.15)",
                     badgeColor: "#c084fc",
-                    title: "🧠 Multi-Model Ensemble Inferred 70+ Stock Instruments",
-                    detail: "Ensemble Weights: XGBoost (30%) + Random Forest (25%) + Time Series LSTM (20%) + RL Q-Agent (15%) + Anomaly (10%). Target: ≥85% Confidence Gate."
-                },
-                {
-                    time: "1m ago",
-                    badge: "PASSED GATE",
-                    badgeBg: "rgba(16,185,129,0.15)",
-                    badgeColor: "#10b981",
-                    title: "🎯 AMZN — Quality Filter Passed (94% Confidence)",
-                    detail: "Breakout Momentum Strategy triggered. Volume Surge 2.4x > 1.8 RVOL | Bullish Engulfing Pattern (82% Win Prob). ATR Risk Sizing: 33 Shares."
-                },
-                {
-                    time: "2m ago",
-                    badge: "ORDER EXECUTED",
+                    title: `🧠 Multi-Model Ensemble Scanned 65+ Instruments`,
+                    detail: `Top Signal: ${top.symbol} (${top.confidence_pct}% Confidence) — Strategy: ${top.recommended_strategy || 'Breakout Momentum'}.`
+                });
+            }
+            trades.slice(0, 4).forEach((t, i) => {
+                auditEvents.push({
+                    time: `${i + 1}m ago`,
+                    badge: t.side ? t.side.toUpperCase() : "ORDER EXECUTED",
+                    badgeBg: t.side === "buy" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
+                    badgeColor: t.side === "buy" ? "#10b981" : "#ef4444",
+                    title: `${t.side === "buy" ? "🚀 BUY" : "🔻 SELL"} ORDER EXECUTED — ${t.symbol} (${t.qty} Shares)`,
+                    detail: `Mode: ${t.trading_mode || 'LIVE'} | Status: ${t.status || 'CONFIRMED'}`
+                });
+            });
+            if (auditEvents.length === 0) {
+                auditEvents.push({
+                    time: "Active",
+                    badge: "MONITORING",
                     badgeBg: "rgba(59,130,246,0.15)",
                     badgeColor: "#3b82f6",
-                    title: "🚀 BUY ORDER EXECUTED — COP (76 Shares @ $120.48)",
-                    detail: "Alpaca Paper Broker Order confirmed. Stop-Loss set at $117.46 (-2.5%) | Take-Profit set at $127.90 (+6.15%). R:R Ratio 1:2.45."
-                },
-                {
-                    time: "4m ago",
-                    badge: "REGIME DETECTED",
-                    badgeBg: "rgba(245,158,11,0.15)",
-                    badgeColor: "#f59e0b",
-                    title: "🌐 Market Regime Classified: [STRONG_BULL_TREND]",
-                    detail: "ADX 31.4 > 25 | EMA Alignment (20 > 50 > 200) | Low Market Volatility VIX 15.4. Routing priority to Breakout Momentum & Swing Strategies."
-                },
-                {
-                    time: "6m ago",
-                    badge: "PROFIT TARGET",
-                    badgeBg: "rgba(16,185,129,0.15)",
-                    badgeColor: "#10b981",
-                    title: "💰 Partial Profit Target Reached — XLE (+2.77% Gain)",
-                    detail: "50% Position locked in at 1:2 Risk:Reward ratio. Trailing ATR Stop updated to lock in risk-free profit."
-                }
-            ];
+                    title: "🧠 AI Quantitative Execution Engine Active",
+                    detail: "Scanning 65+ market products across 10 strategies. Quality Gate threshold set to ≥85% Confidence."
+                });
+            }
 
             aiExecutionAuditList.innerHTML = auditEvents.map(ev => `
                 <div class="ai-item" style="padding:10px 14px;background:#0f172a;border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:8px;">
@@ -344,46 +344,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 💰 POPULATE DEDICATED AI STOCK PROFIT & LOSS ANALYTICS TABLE
         if (stockPnlTableBody) {
-            const stockList = pos.length > 0 ? pos : [
-                { symbol: "AMZN", qty: 33, avg_entry_price: 271.58, current_price: 275.20, strategy: "Breakout Momentum" },
-                { symbol: "COP", qty: 76, avg_entry_price: 120.48, current_price: 124.15, strategy: "Swing Trading" },
-                { symbol: "XLE", qty: 154, avg_entry_price: 59.55, current_price: 61.20, strategy: "Sector Rotation" },
-                { symbol: "XLY", qty: 79, avg_entry_price: 116.09, current_price: 118.90, strategy: "Relative Strength" }
-            ];
+            if (pos.length === 0) {
+                stockPnlTableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#64748b;padding:24px;font-size:13px;">No active open positions. AI model is continuously scanning 65+ stocks for high-confidence (≥85%) entry signals.</td></tr>`;
+                if (pnlSummaryText) {
+                    pnlSummaryText.innerHTML = `Realized Profit: <strong style="color:#10b981;">$0.00</strong> | Live Open P&L: <strong>$0.00</strong> | Active Positions: <strong>0</strong>`;
+                }
+            } else {
+                let sumUnrealized = 0;
+                stockPnlTableBody.innerHTML = pos.map(item => {
+                    const livePx = quotes[item.symbol] ? quotes[item.symbol].price : (item.current_price || item.avg_entry_price);
+                    const val = item.qty * livePx;
+                    const unpnl = (livePx - item.avg_entry_price) * item.qty;
+                    const unpnlPct = item.avg_entry_price ? ((livePx - item.avg_entry_price) / item.avg_entry_price * 100.0) : 0.0;
+                    sumUnrealized += unpnl;
 
-            let sumRealized = 1450.0;
-            let sumUnrealized = 0;
+                    const isProfitable = unpnl >= 0;
+                    const pnlClass = isProfitable ? 'text-green' : 'text-red';
+                    const statusBadge = isProfitable ? 
+                        `<span class="badge-tag" style="background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.3)">PROFIT WIN</span>` : 
+                        `<span class="badge-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;border-color:rgba(239,68,68,0.3)">DRAWDOWN</span>`;
 
-            stockPnlTableBody.innerHTML = stockList.map(item => {
-                const livePx = quotes[item.symbol] ? quotes[item.symbol].price : (item.current_price || item.avg_entry_price);
-                const val = (item.qty || 10) * livePx;
-                const unpnl = (livePx - (item.avg_entry_price || livePx)) * (item.qty || 10);
-                const unpnlPct = item.avg_entry_price ? ((livePx - item.avg_entry_price) / item.avg_entry_price * 100.0) : 0.0;
-                sumUnrealized += unpnl;
+                    return `
+                        <tr>
+                            <td><strong>${item.symbol}</strong></td>
+                            <td style="color:#3b82f6">${item.strategy || 'Breakout Momentum'}</td>
+                            <td>${item.qty}</td>
+                            <td>$${item.avg_entry_price.toFixed(2)}</td>
+                            <td>$${livePx.toFixed(2)}</td>
+                            <td>$${val.toFixed(2)}</td>
+                            <td class="${pnlClass}"><strong>${unpnl >= 0 ? '+' : ''}$${unpnl.toFixed(2)}</strong></td>
+                            <td class="${pnlClass}">${unpnlPct >= 0 ? '+' : ''}${unpnlPct.toFixed(2)}%</td>
+                            <td>${statusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
 
-                const isProfitable = unpnl >= 0;
-                const pnlClass = isProfitable ? 'text-green' : 'text-red';
-                const statusBadge = isProfitable ? 
-                    `<span class="badge-tag" style="background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.3)">PROFIT WIN</span>` : 
-                    `<span class="badge-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;border-color:rgba(239,68,68,0.3)">DRAWDOWN</span>`;
-
-                return `
-                    <tr>
-                        <td><strong>${item.symbol}</strong></td>
-                        <td style="color:#3b82f6">${item.strategy || 'Breakout Momentum'}</td>
-                        <td>${item.qty || 10}</td>
-                        <td>$${(item.avg_entry_price || livePx).toFixed(2)}</td>
-                        <td>$${livePx.toFixed(2)}</td>
-                        <td>$${val.toFixed(2)}</td>
-                        <td class="${pnlClass}"><strong>${unpnl >= 0 ? '+' : ''}$${unpnl.toFixed(2)}</strong></td>
-                        <td class="${pnlClass}">${unpnlPct >= 0 ? '+' : ''}${unpnlPct.toFixed(2)}%</td>
-                        <td>${statusBadge}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            if (pnlSummaryText) {
-                pnlSummaryText.innerHTML = `Realized Profit: <strong style="color:#10b981;">+$${sumRealized.toFixed(2)}</strong> | Live Open P&L: <strong class="${sumUnrealized >= 0 ? 'text-green' : 'text-red'}">${sumUnrealized >= 0 ? '+' : ''}$${sumUnrealized.toFixed(2)}</strong> | Win Rate: <strong style="color:#10b981;">100%</strong>`;
+                if (pnlSummaryText) {
+                    pnlSummaryText.innerHTML = `Realized Profit: <strong style="color:#10b981;">$${(learning.total_realized_pnl || 0).toFixed(2)}</strong> | Live Open P&L: <strong class="${sumUnrealized >= 0 ? 'text-green' : 'text-red'}">${sumUnrealized >= 0 ? '+' : ''}$${sumUnrealized.toFixed(2)}</strong> | Active Positions: <strong>${pos.length}</strong>`;
+                }
             }
         }
 
