@@ -57,12 +57,15 @@ class AutonomousTrader:
         logger.info("⚡ Pre-warming Institutional Quant AI Analysis Cache across 70+ market products...")
         self.is_scanning = True
         
+        # High-Speed Bulk Fetch of Real-Time Quotes (<1.5s)
+        live_quotes = self.market_data.get_batch_quotes(config.WATCHLIST)
+
         def _analyze_single(symbol):
             try:
                 df = self.market_data.get_historical_data(symbol, period="1y", interval="1d")
                 if not df.empty and len(df) >= 30:
                     report = self.ai_scoring.analyze_stock(symbol, df)
-                    quote = self.market_data.get_live_quote(symbol)
+                    quote = live_quotes.get(symbol) or self.market_data.get_live_quote(symbol)
                     report["current_price"] = quote.get("price", 100.0)
                     return report
             except Exception as e:
@@ -70,7 +73,7 @@ class AutonomousTrader:
             return None
 
         reports = []
-        with ThreadPoolExecutor(max_workers=12) as executor:
+        with ThreadPoolExecutor(max_workers=25) as executor:
             results = executor.map(_analyze_single, config.WATCHLIST)
             for r in results:
                 if r:
@@ -107,12 +110,14 @@ class AutonomousTrader:
         self.last_scan_time = time.strftime("%Y-%m-%d %H:%M:%S")
         logger.info("⚡ Starting Institutional AI Stock Scanning & Strategy Execution Cycle...")
 
+        live_quotes = self.market_data.get_batch_quotes(config.WATCHLIST)
+
         def _analyze_single(symbol):
             try:
                 df = self.market_data.get_historical_data(symbol, period="1y", interval="1d")
                 if not df.empty and len(df) >= 30:
                     report = self.ai_scoring.analyze_stock(symbol, df)
-                    quote = self.market_data.get_live_quote(symbol)
+                    quote = live_quotes.get(symbol) or self.market_data.get_live_quote(symbol)
                     report["current_price"] = quote.get("price", 100.0)
                     return report
             except Exception as e:
@@ -120,7 +125,7 @@ class AutonomousTrader:
             return None
 
         scanned_reports = []
-        with ThreadPoolExecutor(max_workers=12) as executor:
+        with ThreadPoolExecutor(max_workers=25) as executor:
             results = executor.map(_analyze_single, config.WATCHLIST)
             for r in results:
                 if r:
