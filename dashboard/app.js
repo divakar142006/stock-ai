@@ -586,6 +586,34 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Smooth Navigation Tab Click & Scroll Handler
+    const sidebarNav = document.getElementById("sidebarNav");
+    if (sidebarNav) {
+        const navItems = sidebarNav.querySelectorAll(".nav-item");
+        navItems.forEach(item => {
+            item.addEventListener("click", (e) => {
+                e.preventDefault();
+                navItems.forEach(i => i.classList.remove("active"));
+                item.classList.add("active");
+
+                const tab = item.getAttribute("data-tab");
+                let targetEl = null;
+
+                if (tab === "dashboard") targetEl = document.getElementById("tradingviewChart");
+                else if (tab === "ai-audit") targetEl = document.getElementById("aiAuditSection");
+                else if (tab === "pnl") targetEl = document.getElementById("stockPnlSection");
+                else if (tab === "positions") targetEl = document.getElementById("positionsTable");
+                else if (tab === "signals") targetEl = document.getElementById("aiPicksList");
+                else if (tab === "n8n") targetEl = document.getElementById("tradeLogList");
+                else if (tab === "learning") targetEl = document.getElementById("learningWinRate");
+
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            });
+        });
+    }
+
     // Chart Symbol Selector Handler
     if (chartSymbolSelect) {
         chartSymbolSelect.addEventListener("change", (e) => {
