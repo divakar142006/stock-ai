@@ -188,41 +188,58 @@ def n8n_incoming_webhook():
 
     return jsonify({"status": "ERROR", "message": f"Unknown action: {action}"}), 400
 
-@app.route("/api/news", methods=["GET"])
-def get_news():
-    """Fetch real financial news for major tickers."""
+# Asynchronous Cached News Feed to ensure sub-second page loads
+_news_cache = {"feed": [], "timestamp": 0}
+_news_lock = threading.Lock()
+
+def _background_refresh_news():
+    global _news_cache
     tickers = ["AAPL", "NVDA", "MSFT", "TSLA", "GOOGL", "AMZN", "META"]
     news_feed = []
     
-    try:
-        for ticker in tickers:
-            news = yf.Ticker(ticker).news
-            if not news:
-                continue
-            for item in news[:2]:
+    def _fetch_ticker_news(sym):
+        try:
+            items = yf.Ticker(sym).news or []
+            res = []
+            for item in items[:2]:
                 content = item.get("content", item)
                 title = content.get("title", "No Title")
-                
                 provider = content.get("provider", {})
                 source = provider.get("displayName") if isinstance(provider, dict) else content.get("publisher", "Unknown")
-                
                 url_info = content.get("clickThroughUrl", {})
                 url = url_info.get("url") if isinstance(url_info, dict) else content.get("link", "#")
-                
                 pub_time = content.get("pubDate") or content.get("providerPublishTime")
-                
-                news_feed.append({
-                    "title": f"{ticker}: {title}",
+                res.append({
+                    "title": f"{sym}: {title}",
                     "source": source,
                     "timestamp": str(pub_time),
                     "url": url,
-                    "tag": ticker
+                    "tag": sym
                 })
-                
-    except Exception as e:
-        logger.error(f"Error fetching news: {e}")
-        
-    return jsonify({"news": news_feed})
+            return res
+        except Exception:
+            return []
+
+    with ThreadPoolExecutor(max_workers=7) as executor:
+        results = executor.map(_fetch_ticker_news, tickers)
+        for r in results:
+            news_feed.extend(r)
+
+    with _news_lock:
+        _news_cache["feed"] = news_feed
+        _news_cache["timestamp"] = time.time()
+
+# Initial background news fetch
+threading.Thread(target=_background_refresh_news, daemon=True).start()
+
+@app.route("/api/news", methods=["GET"])
+def get_news():
+    """Fetch cached real financial news instantly (<1ms)."""
+    now = time.time()
+    with _news_lock:
+        if now - _news_cache["timestamp"] > 300 or not _news_cache["feed"]:
+            threading.Thread(target=_background_refresh_news, daemon=True).start()
+        return jsonify({"news": _news_cache["feed"]})
 
 @app.route("/api/outcomes", methods=["GET"])
 def get_outcomes():
