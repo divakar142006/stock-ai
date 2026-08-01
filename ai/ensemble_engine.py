@@ -151,10 +151,12 @@ class QuantitativeEnsembleEngine:
                     'rsi_14', 'macd_signal', 'roc_10',
                     'vol_ratio', 'obv_trend'
                 ]
-                latest_features = df_feat[features].iloc[-1:].fillna(0)
-                
-                gb_prob_up = float(self.gb_model.predict_proba(latest_features)[0][1])
-                rf_prob_up = float(self.rf_model.predict_proba(latest_features)[0][1])
+                latest_features = df_feat[features].fillna(0).tail(1)
+                if not latest_features.empty and len(latest_features) > 0:
+                    gb_prob_up = float(self.gb_model.predict_proba(latest_features)[0][1])
+                    rf_prob_up = float(self.rf_model.predict_proba(latest_features)[0][1])
+                else:
+                    is_trained = False
             except Exception as e:
                 logger.error(f"Inference failed for {symbol}: {str(e)}. Falling back to heuristics.")
                 is_trained = False
